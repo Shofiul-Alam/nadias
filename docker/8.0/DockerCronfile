@@ -1,0 +1,11 @@
+FROM sail-8.0/app
+
+RUN apt-get update && apt-get install -y cron
+
+COPY laravel-crontab /etc/cron.d/laravel-crontab
+# COPY crontab-worker.conf /etc/supervisor/conf.d/crontab-worker.conf
+
+RUN chmod 0644 /etc/cron.d/laravel-crontab \
+    && crontab /etc/cron.d/laravel-crontab
+
+ENTRYPOINT ["cron", "-f"]

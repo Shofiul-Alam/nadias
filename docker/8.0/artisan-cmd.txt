@@ -1,0 +1,1 @@
+php -dxdebug.mode=debug -dxdebug.remote_host=host.docker.internal -dxdebug.client_port=9003 -dxdebug.remote_enable=1 -dxdebug.start_with_request=yes artisan marketing:run-cron-automation

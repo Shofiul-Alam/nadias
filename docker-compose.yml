@@ -1,0 +1,80 @@
+# For more information: https://laravel.com/docs/sail
+version: '3'
+services:
+  nadias.app:
+    build:
+      context: ./docker/8.0
+      dockerfile: Dockerfile
+      args:
+        WWWGROUP: '${WWWGROUP}'
+    image: sail-8.0/app
+    ports:
+      - "89:80"
+    environment:
+      WWWUSER: '${WWWUSER}'
+      LARAVEL_SAIL: 1
+    volumes:
+      - '.:/var/www/html'
+      - './docker/8.0/php.ini:/etc/php/8.0/cli/conf.d/99-sail.ini'
+    networks:
+      nadia:
+        aliases:
+          - nadias.app
+    depends_on:
+      - nadias.mysql
+      - nadias.redis
+  nadias.nginx:
+    image: nginx:latest
+    container_name: nadias.nginx
+    volumes:
+      - './docker/8.0/nginx/nginx.conf:/etc/nginx/nginx.conf'
+      - './docker/8.0/nginx/index.html:/var/www/html/index.html'
+      - ./docker/8.0/nginx/error.log:/etc/nginx/error_log.log
+      - ./docker/8.0/nginx/cache/:/etc/nginx/cache
+      - ./docker/8.0/nginx/conf.d:/etc/nginx/conf.d
+    ports:
+      - 8080:80
+    networks:
+      nadia:
+        aliases:
+          - nadias.nginx
+    depends_on:
+      - nadias.app
+  mysql:
+    image: 'mysql:8.0'
+    ports:
+      - '${FORWARD_DB_PORT:-3310}:3306'
+    environment:
+      UPLOAD_LIMIT: 1G
+      MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+      MYSQL_DATABASE: '${DB_DATABASE}'
+      MYSQL_USER: '${DB_USERNAME}'
+      MYSQL_PASSWORD: '${DB_PASSWORD}'
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    volumes:
+      - 'nadiamysql:/var/lib/mysql'
+      - './docker/8.0/mysql.conf/app.cnf:/etc/mysql/conf.d/krost.cnf'
+      - './database/seeders/data/data-new/bigfiles:/bigfiles'
+    command: --sql_mode=STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+    networks:
+      - nadia
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping"]
+  nadia.redis:
+    image: 'redis:alpine'
+    ports:
+      - '${FORWARD_REDIS_PORT:-6379}:6379'
+    volumes:
+      - 'nadiaredis:/data'
+    networks:
+      - nadia
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+networks:
+  nadia:
+    driver: bridge
+volumes:
+  nadiamysql:
+    driver: local
+  nadiaredis:
+    driver: local
