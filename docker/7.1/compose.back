@@ -1,0 +1,109 @@
+# For more information: https://laravel.com/docs/sail
+version: '3'
+services:
+    laravel.test:
+        build:
+            context: ./docker/8.0
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP}'
+        image: sail-8.0/app
+        ports:
+            - "88:80"
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            sail:
+                aliases:
+                      - web
+        depends_on:
+            - mysql
+            - redis
+            - selenium
+    nginx:
+        image: nginx:latest
+        container_name: production_nginx
+        volumes:
+          - ./docker/8.0/nginx/nginx.conf:/etc/nginx/nginx.conf
+          - ./docker/8.0/nginx:/var/www/html
+          - ./docker/8.0/nginx/error.log:/etc/nginx/error_log.log
+          - ./docker/8.0/nginx/cache/:/etc/nginx/cache
+          - ./docker/8.0/nginx/conf.d:/etc/nginx/conf.d
+        ports:
+          - 80:80
+          - 443:443
+        networks:
+            sail:
+                aliases:
+                    - nginx
+        depends_on:
+          - laravel.test
+    certbot:
+      image: certbot/certbot:latest
+      command: certonly --webroot --webroot-path=/var/www/certbot --email your-shoi.tafe@gmail.com --agree-tos --no-eff-email -d app.kingmaker.ninja
+      volumes:
+        - ./docker/8.0/nginx/certbot/conf:/etc/letsencrypt
+        - ./certbot/logs:/var/log/letsencrypt
+        - ./docker/8.0/nginx/certbot/data:/var/www/certbot
+    mysql:
+        image: 'mysql:8.0'
+        ports:
+            - '${FORWARD_DB_PORT:-3306}:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_DATABASE: '${DB_DATABASE}'
+            MYSQL_USER: '${DB_USERNAME}'
+            MYSQL_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        volumes:
+            - 'sailmysql:/var/lib/mysql'
+            - './database/seeders/data:/var/lib/mysql/dbdata'
+        command: --sql_mode=STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+        networks:
+            - sail
+        healthcheck:
+          test: ["CMD", "mysqladmin", "ping"]
+    redis:
+        image: 'redis:alpine'
+        ports:
+            - '${FORWARD_REDIS_PORT:-6379}:6379'
+        volumes:
+            - 'sailredis:/data'
+        networks:
+            - sail
+        healthcheck:
+          test: ["CMD", "redis-cli", "ping"]
+    meilisearch:
+        image: 'getmeili/meilisearch:latest'
+        ports:
+            - '${FORWARD_MEILISEARCH_PORT:-7700}:7700'
+        volumes:
+            - 'sailmeilisearch:/data.ms'
+        networks:
+            - sail
+    mailhog:
+        image: 'mailhog/mailhog:latest'
+        ports:
+            - '${FORWARD_MAILHOG_PORT:-1025}:1025'
+            - '${FORWARD_MAILHOG_DASHBOARD_PORT:-8025}:8025'
+        networks:
+            - sail
+    selenium:
+       image: 'selenium/standalone-chrome'
+       volumes:
+            - '/dev/shm:/dev/shm'
+       networks:
+           - sail
+networks:
+    sail:
+        driver: bridge
+volumes:
+    sailmysql:
+        driver: local
+    sailredis:
+        driver: local
+    sailmeilisearch:
+        driver: local

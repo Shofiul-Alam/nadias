@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
       args:
         WWWGROUP: '${WWWGROUP}'
-    image: sail-8.0/app
+    image: nadias.app
     ports:
       - "89:80"
     environment:
@@ -23,24 +23,7 @@ services:
     depends_on:
       - nadias.mysql
       - nadias.redis
-  nadias.nginx:
-    image: nginx:latest
-    container_name: nadias.nginx
-    volumes:
-      - './docker/8.0/nginx/nginx.conf:/etc/nginx/nginx.conf'
-      - './docker/8.0/nginx/index.html:/var/www/html/index.html'
-      - ./docker/8.0/nginx/error.log:/etc/nginx/error_log.log
-      - ./docker/8.0/nginx/cache/:/etc/nginx/cache
-      - ./docker/8.0/nginx/conf.d:/etc/nginx/conf.d
-    ports:
-      - 8080:80
-    networks:
-      nadia:
-        aliases:
-          - nadias.nginx
-    depends_on:
-      - nadias.app
-  mysql:
+  nadias.mysql:
     image: 'mysql:8.0'
     ports:
       - '${FORWARD_DB_PORT:-3310}:3306'
