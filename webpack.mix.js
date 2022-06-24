@@ -18,6 +18,10 @@ if (mix.inProduction()) {
    mix.version();
 }
 
-mix.browserSync('localhost:8080');
+mix.browserSync({
+    host: 'localhost',
+    proxy: 'nadias.app:80',
+    open: false
+});
 
 
